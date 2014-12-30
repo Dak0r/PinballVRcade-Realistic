@@ -1,4 +1,4 @@
-PinballVRcade
+PinballVRcade-Realistic
 =============
 
 Patcher for Pinball Arcade that enables Oculus Rift support (Windows only)
