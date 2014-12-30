@@ -87,7 +87,12 @@ Direct3DDevice9Hooks::Direct3DDevice9Hooks (IDirect3D9* parent, IDirect3DDevice9
 
         ovrD3D9Config cfg;
         cfg.D3D9.Header.API = ovrRenderAPI_D3D9;
-        cfg.D3D9.Header.RTSize = OVR::Sizei(this->present_parameters.BackBufferWidth, this->present_parameters.BackBufferHeight);
+
+		// Changes by Daniel Korgel, Last: 30.12.2014
+        //cfg.D3D9.Header.RTSize = OVR::Sizei(this->present_parameters.BackBufferWidth, this->present_parameters.BackBufferHeight); //old SDK
+		cfg.D3D9.Header.BackBufferSize = OVR::Sizei(this->present_parameters.BackBufferWidth, this->present_parameters.BackBufferHeight); //new SDK
+		//End Changes by Daniel Korgel
+
         cfg.D3D9.Header.Multisample = this->present_parameters.MultiSampleQuality;
         cfg.D3D9.pDevice = this->inner;
         cfg.D3D9.pSwapChain = 0;
@@ -271,8 +276,14 @@ HRESULT Direct3DDevice9Hooks::Present (CONST RECT* pSourceRect,CONST RECT* pDest
         }
 
         ovrHmd_BeginFrame(this->hmd, this->frame_index++);
-        this->head_pose[ovrEye_Left] = ovrHmd_GetEyePose(this->hmd, ovrEye_Left);
-        this->head_pose[ovrEye_Right] = ovrHmd_GetEyePose(this->hmd, ovrEye_Right);
+		// Changes by Daniel Korgel, Last: 30.12.2014
+		// old SDK
+		//this->head_pose[ovrEye_Left] = ovrHmd_GetEyePose(this->hmd, ovrEye_Left);
+		//this->head_pose[ovrEye_Right] = ovrHmd_GetEyePose(this->hmd, ovrEye_Right);
+		//new SDK
+		this->head_pose[ovrEye_Left] = ovrHmd_GetHmdPosePerEye(this->hmd, ovrEye_Left);
+		this->head_pose[ovrEye_Right] = ovrHmd_GetHmdPosePerEye(this->hmd, ovrEye_Right);
+		// End Changes by Daniel Korgel
         return D3D_OK;
     }
     else
@@ -736,11 +747,18 @@ HRESULT Direct3DDevice9Hooks::DrawIndexedPrimitive (D3DPRIMITIVETYPE PrimitiveTy
         OVR::Vector3f hmd_position = head_pose.Position;
         OVR::Quatf hmd_orientation = head_pose.Orientation;
 
-        float unit_scale = 5000.0f;
-        OVR::Vector3f ovr_world_offset(0, 3000.0f, 5000.0f);
+		//Changes by Daniel Korgel, Last: 30.12.2014
+        float unit_scale = 6500.0f; //was 5000
+        OVR::Vector3f ovr_world_offset(0, 6000.0f, 5000.0f); // was 0,3000,5000
+		//End Changes by Daniel Korgel
+
         OVR::Matrix4f ovr_translation = OVR::Matrix4f::Translation(-ovr_world_offset - hmd_position * unit_scale);
         OVR::Matrix4f ovr_view = OVR::Matrix4f(hmd_orientation.Inverted()) * ovr_translation;
-        OVR::Matrix4f ovr_eye_view = OVR::Matrix4f::Translation(this->eye_render_desc[eye].ViewAdjust) * ovr_view * axis_conversion;
+
+		// Changes by Daniel Korgel, Last: 30.12.2014
+        //OVR::Matrix4f ovr_eye_view = OVR::Matrix4f::Translation(this->eye_render_desc[eye].ViewAdjust) * ovr_view * axis_conversion; //old SDK
+		OVR::Matrix4f ovr_eye_view = OVR::Matrix4f::Translation(this->eye_render_desc[eye].HmdToEyeViewOffset) * ovr_view * axis_conversion; //new SDK
+		//End Changes Daniel Korgel
 
         D3DXMATRIX view;
         D3DXMatrixTranspose(&view, (D3DXMATRIX*)&ovr_eye_view);
