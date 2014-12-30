@@ -3,10 +3,4 @@
   <ItemGroup>
     <ClCompile Include="main.c" />
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="resource.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="Launcher.rc" />
-  </ItemGroup>
 </Project>

@@ -142,7 +142,6 @@ Direct3DDevice9Hooks::Direct3DDevice9Hooks (IDirect3D9* parent, IDirect3DDevice9
 
             uintptr_t address = find_fingerprint(VIEW_PROJECTION_MULTIPLY_FINGERPRINT);
             install_patch(address + VIEW_PROJECTION_MULTIPLY_FINGERPRINT_OFFSET, sizeof(patch), patch);
-			ovrHmd_RecenterPose(this->hmd);
         }
     }
 }
@@ -263,7 +262,7 @@ HRESULT Direct3DDevice9Hooks::Present (CONST RECT* pSourceRect,CONST RECT* pDest
             eye_textures[1].D3D9.Header.RenderViewport.Pos.x = this->target_size.w / 2;
             ovrHmd_EndFrame(this->hmd, this->head_pose, &eye_textures[0].Texture);
         }
-        if (GetAsyncKeyState(VK_F5) != 0)
+        if (GetAsyncKeyState(VK_F12) != 0)
         {
             if (!this->reset_pressed)
             {
@@ -749,8 +748,8 @@ HRESULT Direct3DDevice9Hooks::DrawIndexedPrimitive (D3DPRIMITIVETYPE PrimitiveTy
         OVR::Quatf hmd_orientation = head_pose.Orientation;
 
 		//Changes by Daniel Korgel, Last: 30.12.2014
-        float unit_scale = 4500.0f; //was 5000
-        OVR::Vector3f ovr_world_offset(0, 4500.0f, 3500.0f); // was 0,3000,5000
+        float unit_scale = 6500.0f; //was 5000
+        OVR::Vector3f ovr_world_offset(0, 6000.0f, 5000.0f); // was 0,3000,5000
 		//End Changes by Daniel Korgel
 
         OVR::Matrix4f ovr_translation = OVR::Matrix4f::Translation(-ovr_world_offset - hmd_position * unit_scale);
