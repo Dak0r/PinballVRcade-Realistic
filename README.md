@@ -13,5 +13,5 @@ If you want to compile this Project:
 
 1) The Oculus SDK Version 0.4.4 hast to be placed in C:\OculusSDK\ (for example C:\OculusSDK\LICENSE.txt )
 
-2) You need the (newest) DirectX SDK from June 2010. (If it gives you Errors uninstall VC++ Redistributable for VS2010 x86 and x64 and try again)
+2) You need the (newest) DirectX SDK from June 2010 installed at its default location (If it shows an error uninstall VC++ Redistributable for VS2010 x86 and x64 and try again)
 
