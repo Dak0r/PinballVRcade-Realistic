@@ -7,13 +7,17 @@ Patcher for Pinball Arcade that enables Oculus Rift support (Windows only)
 This is an updated Version by Daniel Korgel and is based on PinballVRcade by cbdillon.
 
 By now I just updated the Patcher to the new Oculus SDK Version 0.4.4 and I tweaked some values for a more realistic feeling. Also the Project was Updated for use with Visual Studio 2013
-==============
-Controls:
 
-Use F12 to reset Position
-
+Controls
 ==============
+
+
+Use F5 to reset Position
+
+
 If you want to compile this Project:
+==============
+
 
 1) The Oculus SDK Version 0.4.4 hast to be placed in C:\OculusSDK\ (for example C:\OculusSDK\LICENSE.txt )
 
