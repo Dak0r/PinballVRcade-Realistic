@@ -3,7 +3,8 @@
 //====================================================================
 
 #include <d3d9.h>
-#include <OVR.h>
+//#include <OVR.h>
+#include <OVR_CAPI_D3D.h>
 
 class Direct3D9Hooks : public IDirect3D9 
 {

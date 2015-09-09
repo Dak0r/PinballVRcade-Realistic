@@ -47,6 +47,11 @@ int CALLBACK WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
         strcpy(exe_path, "c:\\Program Files\\Steam\\steamapps\\common\\PinballArcade\\PinballArcade.exe");
         success = GetFileAttributesA(exe_path) != INVALID_FILE_ATTRIBUTES;
     }
+	if (!success)
+	{
+		strcpy(exe_path, "e:\\Steam Library\\steamapps\\common\\PinballArcade\\PinballArcade.exe");
+		success = GetFileAttributesA(exe_path) != INVALID_FILE_ATTRIBUTES;
+	}
     if (!success)
     {
         MessageBoxA(NULL, "Locate PinballArcade.exe on your local system and drag it onto the launcher.", "Couldn't locate Pinball Arcade.", MB_ICONERROR | MB_OK);

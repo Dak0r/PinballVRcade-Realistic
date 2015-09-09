@@ -7,7 +7,9 @@
 
 #include <d3d9.h>
 #include <d3dx9.h>
-#include <OVR.h>
+#include <OVR_CAPI_D3D.h>
+#include "Extras/OVR_Math.h"
+//#include <OVR.h>
 
 class Direct3DDevice9Hooks : public IDirect3DDevice9
 {
@@ -155,8 +157,10 @@ private:
     bool stereo;
     bool render_distorted;
     bool reset_pressed;
+	bool changeScaleFilter_pressed;
+	D3DTEXTUREFILTERTYPE texFilter;
     unsigned int frame_index;
-    OVR::Sizei target_size;
+    ovrSizei target_size;
     IDirect3DTexture9* hmd_texture;
 
     // UI stereo rendering helpers

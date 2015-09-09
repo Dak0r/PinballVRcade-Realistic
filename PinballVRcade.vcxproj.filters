@@ -4,10 +4,14 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Direct3D9Hooks.cpp" />
     <ClCompile Include="Direct3DDevice9Hooks.cpp" />
+    <ClCompile Include="D3D11DeviceHooks.cpp" />
+    <ClCompile Include="ID3D11Hooks.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Direct3D9Hooks.h" />
     <ClInclude Include="Direct3DDevice9Hooks.h" />
     <ClInclude Include="hacks.h" />
+    <ClInclude Include="D3D11DeviceHooks.h" />
+    <ClInclude Include="ID3D11Hooks.h" />
   </ItemGroup>
 </Project>

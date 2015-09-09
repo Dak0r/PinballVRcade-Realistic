@@ -8,7 +8,8 @@
 #include "Direct3D9Hooks.h"
 #include "Direct3DDevice9Hooks.h"
 
-#include <OVR.h>
+//#include <OVR.h>
+#include <OVR_CAPI_D3D.h>
 
 Direct3D9Hooks::Direct3D9Hooks (IDirect3D9* inner)
 {

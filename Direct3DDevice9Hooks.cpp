@@ -13,6 +13,7 @@
 #include <d3dx9.h>
 #include "Direct3DDevice9Hooks.h"
 #include "hacks.h"
+#include "Extras/OVR_Math.h"
 
 #define OVR_D3D_VERSION 9
 #include <OVR_CAPI_D3D.h>
@@ -71,36 +72,56 @@ Direct3DDevice9Hooks::Direct3DDevice9Hooks (IDirect3D9* parent, IDirect3DDevice9
     memset(&this->current_stream, 0, sizeof(this->current_stream));
     this->inner->GetRenderTarget(0, &this->back_buffer_surface);
 
+	this->texFilter = D3DTEXF_LINEAR;
+
     if (present_parameters.Windowed == 0)
     {
         D3DDISPLAYMODE display_mode;
         this->inner->GetDisplayMode(0, &display_mode);
-        patch_timestep(display_mode.RefreshRate);
-    }
 
+        patch_timestep(75); //display_mode.RefreshRate
+    }
     if (this->hmd)
     {
-        OVR::Sizei left_size = ovrHmd_GetFovTextureSize(hmd, ovrEye_Left, hmd->DefaultEyeFov[0], 1.0f);
-        OVR::Sizei right_size = ovrHmd_GetFovTextureSize(hmd, ovrEye_Right, hmd->DefaultEyeFov[1], 1.0f);
-        this->target_size = OVR::Sizei(left_size.w + right_size.w, max(left_size.h, right_size.h));
-        this->target_size = OVR::Sizei(this->present_parameters.BackBufferWidth, this->present_parameters.BackBufferHeight);
+		//float RENDERSCALE = 8.0f;
+		//ovrHmd::ovr_GetFovTextureSize
+		ovrSizei left_size = ovrHmd_GetFovTextureSize(hmd, ovrEye_Left, hmd->DefaultEyeFov[0], 1.0f);
+		ovrSizei right_size = ovrHmd_GetFovTextureSize(hmd, ovrEye_Right, hmd->DefaultEyeFov[1], 1.0f);
+		this->target_size.w = left_size.w + right_size.w;
+		this->target_size.h = max(left_size.h, right_size.h);
+		//this->target_size = ovrSizei(left_size.w + right_size.w, max(left_size.h, right_size.h));
+       // this->target_size = OVR::Sizei(this->present_parameters.BackBufferWidth, this->present_parameters.BackBufferHeight);
 
-        ovrD3D9Config cfg;
+		ovrD3D9Config  cfg;
         cfg.D3D9.Header.API = ovrRenderAPI_D3D9;
 
-		// Changes by Daniel Korgel, Last: 30.12.2014
-        //cfg.D3D9.Header.RTSize = OVR::Sizei(this->present_parameters.BackBufferWidth, this->present_parameters.BackBufferHeight); //old SDK
-		cfg.D3D9.Header.BackBufferSize = OVR::Sizei(this->present_parameters.BackBufferWidth, this->present_parameters.BackBufferHeight); //new SDK
+		// Changes by Daniel Korgel, Last: 09.09.2015
+        //cfg.D3D9.Header.RTSize = OVR::Sizei(this->present_parameters.BackBufferWidth, this->present_parameters.BackBufferHeight); //old SDK 32
+		//cfg.D3D9.Header.BackBufferSize = ovrSizei(this->present_parameters.BackBufferWidth, this->present_parameters.BackBufferHeight); //new SDK 44
+		
+		//new SDK 55:
+		cfg.D3D9.Header.BackBufferSize.w = this->present_parameters.BackBufferWidth;
+		cfg.D3D9.Header.BackBufferSize.h = this->present_parameters.BackBufferHeight;
+
+
+		// Neither Setting seems to have an effect
+		//cfg.D3D9.Header.Multisample = this->present_parameters.MultiSampleQuality;
+		cfg.D3D9.Header.Multisample = 32;
 		//End Changes by Daniel Korgel
 
-        cfg.D3D9.Header.Multisample = this->present_parameters.MultiSampleQuality;
         cfg.D3D9.pDevice = this->inner;
         cfg.D3D9.pSwapChain = 0;
+
+		//Daniel Korgel Notes:
+		// | ovrDistortionCap_HqDistortion only in DX11
+		// ovrDistortionCap_Chromatic unnsported in 05
+
         unsigned caps =
-            ovrDistortionCap_Chromatic
-            | ovrDistortionCap_NoRestore
+            ovrDistortionCap_NoRestore
             | ovrDistortionCap_SRGB
-            | ovrDistortionCap_Overdrive;
+            | ovrDistortionCap_Overdrive
+			| ovrDistortionCap_TimeWarp
+			| ovrDistortionCap_HqDistortion;
         if (!ovrHmd_ConfigureRendering(this->hmd, &cfg.Config, caps, hmd->DefaultEyeFov, this->eye_render_desc))
         {
             this->hmd = 0;
@@ -108,11 +129,12 @@ Direct3DDevice9Hooks::Direct3DDevice9Hooks (IDirect3D9* parent, IDirect3DDevice9
         }
         else
         {
+
             this->inner->CreateTexture(
-                this->present_parameters.BackBufferWidth,
-                this->present_parameters.BackBufferHeight,
+			   this->target_size.w, //use the actual target size for this
+			   this->target_size.h,
                 1,  // Levels
-                D3DUSAGE_RENDERTARGET,
+				D3DUSAGE_RENDERTARGET,
                 this->present_parameters.BackBufferFormat,
                 D3DPOOL_DEFAULT,
                 &this->hmd_texture,
@@ -248,19 +270,29 @@ HRESULT Direct3DDevice9Hooks::Present (CONST RECT* pSourceRect,CONST RECT* pDest
             this->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &this->back_buffer_surface);
             IDirect3DSurface9* hmd_surface;
             this->hmd_texture->GetSurfaceLevel(0, &hmd_surface);
-            HRESULT result = this->StretchRect(this->back_buffer_surface, NULL, hmd_surface, NULL, D3DTEXF_LINEAR);
+			RECT sourceRect;
+			sourceRect.top = 0;
+			sourceRect.left = 0;
+			sourceRect.right = 3840;
+			sourceRect.bottom = 2160;
+			RECT targetRect;
+			sourceRect.top = 0;
+			sourceRect.left = 0;
+			sourceRect.right = 1920;
+			sourceRect.bottom = 1080;
+			HRESULT result = this->StretchRect(this->back_buffer_surface, NULL, hmd_surface, NULL, texFilter); //D3DTEXF_LINEAR
 
             // Hand over the surface to ovr for distortion
             ovrD3D9Texture eye_textures[2];
             eye_textures[0].D3D9.Header.API = ovrRenderAPI_D3D9;
-            eye_textures[0].D3D9.Header.TextureSize = this->target_size;
+			eye_textures[0].D3D9.Header.TextureSize = this->target_size;
             eye_textures[0].D3D9.Header.RenderViewport.Pos.x = 0;
             eye_textures[0].D3D9.Header.RenderViewport.Pos.y = 0;
             eye_textures[0].D3D9.Header.RenderViewport.Size.w = this->target_size.w / 2;
             eye_textures[0].D3D9.Header.RenderViewport.Size.h = this->target_size.h;
             eye_textures[0].D3D9.pTexture = this->hmd_texture;
             eye_textures[1] = eye_textures[0];
-            eye_textures[1].D3D9.Header.RenderViewport.Pos.x = this->target_size.w / 2;
+			eye_textures[1].D3D9.Header.RenderViewport.Pos.x = this->target_size.w / 2;
             ovrHmd_EndFrame(this->hmd, this->head_pose, &eye_textures[0].Texture);
         }
         if (GetAsyncKeyState(VK_F5) != 0)
@@ -274,7 +306,47 @@ HRESULT Direct3DDevice9Hooks::Present (CONST RECT* pSourceRect,CONST RECT* pDest
         else
         {
             this->reset_pressed = false;
-        }
+		}
+		if (GetAsyncKeyState(VK_F6) != 0)
+		{
+			if (!this->changeScaleFilter_pressed)
+			{
+				if (texFilter == D3DTEXF_ANISOTROPIC){
+					texFilter = D3DTEXF_CONVOLUTIONMONO;
+				}
+				else if(texFilter == D3DTEXF_CONVOLUTIONMONO){
+					texFilter = D3DTEXF_FORCE_DWORD;
+				}
+				else if (texFilter == D3DTEXF_FORCE_DWORD){
+					texFilter = D3DTEXF_GAUSSIANQUAD;
+				}
+				else if (texFilter == D3DTEXF_GAUSSIANQUAD){
+					texFilter = D3DTEXF_LINEAR;
+				}
+				else if (texFilter == D3DTEXF_LINEAR){
+					texFilter = D3DTEXF_NONE;
+				}
+				else if (texFilter == D3DTEXF_NONE){
+					texFilter = D3DTEXF_POINT;
+				}
+				else if (texFilter == D3DTEXF_POINT){
+					texFilter = D3DTEXF_PYRAMIDALQUAD;
+				}
+				else if (texFilter == D3DTEXF_PYRAMIDALQUAD){
+					texFilter = D3DTEXF_ANISOTROPIC;
+				}
+				
+				this->changeScaleFilter_pressed = true;
+			}
+		}
+		else
+		{
+			this->changeScaleFilter_pressed = false;
+		}
+
+
+		
+		
 
         ovrHmd_BeginFrame(this->hmd, this->frame_index++);
 		// Changes by Daniel Korgel, Last: 30.12.2014
@@ -652,7 +724,7 @@ HRESULT Direct3DDevice9Hooks::DrawPrimitive (D3DPRIMITIVETYPE PrimitiveType,UINT
     // Get the current viewport
     D3DVIEWPORT9 viewport;
     this->inner->GetViewport(&viewport);
-
+	
     // Lock the vertices that were going to be rendered
     ui_vertex* vertices;
     this->current_stream.data->Lock(StartVertex * sizeof(ui_vertex), 2 * sizeof(ui_vertex), (void**)&vertices, D3DLOCK_READONLY);
@@ -735,30 +807,39 @@ HRESULT Direct3DDevice9Hooks::DrawIndexedPrimitive (D3DPRIMITIVETYPE PrimitiveTy
     // (origin is middle of the table)
     // (units are millimeters - ?)
     // p_v = (o_v.x, o_v.z, -o_v.y)
-
-    OVR::Matrix4f axis_conversion = OVR::Matrix4f::AxisConversion(
-        OVR::WorldAxes(OVR::Axis_Right, OVR::Axis_Out, OVR::Axis_Down),
-        OVR::WorldAxes(OVR::Axis_Right, OVR::Axis_Up, OVR::Axis_Out)
+	int ftest = OVR::Axis_Right;
+	ovrMatrix4f_ axis_conversion = OVR::Matrix4f::AxisConversion(
+		OVR::WorldAxes(OVR::AxisDirection::Axis_Right, OVR::AxisDirection::Axis_Out, OVR::AxisDirection::Axis_Down),
+		OVR::WorldAxes(OVR::AxisDirection::Axis_Right, OVR::AxisDirection::Axis_Up, OVR::AxisDirection::Axis_Out)
     );
 
     D3DXMATRIX transforms[2];
     for (int eye = 0; eye < 2; ++eye)
     {
         ovrPosef head_pose = this->tracking_state.HeadPose.ThePose;
-        OVR::Vector3f hmd_position = head_pose.Position;
-        OVR::Quatf hmd_orientation = head_pose.Orientation;
+		OVR::Vector3f hmd_position = head_pose.Position;
+		OVR::Quatf hmd_orientation = head_pose.Orientation;
 
 		//Changes by Daniel Korgel, Last: 30.12.2014
         float unit_scale = 4500.0f; //was 5000
-        OVR::Vector3f ovr_world_offset(0, 4500.0f, 3500.0f); // was 0,3000,5000
+        //OVR::Vector3f ovr_world_offset(0, 4500.0f, 3500.0f); //For playing while Standing // was 0,3000,5000
+
+		//For playing while seated 
+		OVR::Vector3f ovr_world_offset;
+		ovr_world_offset.x = -0;
+		ovr_world_offset.y = -2000.0f;
+		ovr_world_offset.z = -3500.0f;
 		//End Changes by Daniel Korgel
 
-        OVR::Matrix4f ovr_translation = OVR::Matrix4f::Translation(-ovr_world_offset - hmd_position * unit_scale);
-        OVR::Matrix4f ovr_view = OVR::Matrix4f(hmd_orientation.Inverted()) * ovr_translation;
+
+
+		ovrMatrix4f ovr_translation = OVR::Matrix4f::Translation(ovr_world_offset - hmd_position * unit_scale);
+		//ovrMatrix4f ovr_translation = OVR::Matrix4f::Translation(ovr_world_offset);
+		OVR::Matrix4f ovr_view = OVR::Matrix4f(hmd_orientation.Inverted()) * ovr_translation;
 
 		// Changes by Daniel Korgel, Last: 30.12.2014
         //OVR::Matrix4f ovr_eye_view = OVR::Matrix4f::Translation(this->eye_render_desc[eye].ViewAdjust) * ovr_view * axis_conversion; //old SDK
-		OVR::Matrix4f ovr_eye_view = OVR::Matrix4f::Translation(this->eye_render_desc[eye].HmdToEyeViewOffset) * ovr_view * axis_conversion; //new SDK
+		OVR::Matrix4f ovr_eye_view = OVR::Matrix4f::Translation(this->eye_render_desc[eye].HmdToEyeViewOffset) *ovr_view * axis_conversion; //new SDK
 		//End Changes Daniel Korgel
 
         D3DXMATRIX view;
